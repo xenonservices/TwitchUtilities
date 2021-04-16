@@ -1,3 +1,4 @@
 rootProject.name = 'twitchutilities-parent'
 
 include 'clipsorter'
+include 'counter'
