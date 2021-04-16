@@ -1,0 +1,4 @@
+group 'com.xenon.twitchutilities'
+version '1.0-SNAPSHOT'
+
+mainClassName = 'services.xenon.twitchutilities.clipsorter.ClipSorterKt'
