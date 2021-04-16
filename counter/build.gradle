@@ -2,3 +2,8 @@ group 'com.xenon.twitchutilities'
 version '1.0-SNAPSHOT'
 
 mainClassName = 'services.xenon.twitchutilities.counter.TwitchCounterKt'
+
+dependencies {
+    implementation 'com.github.twitch4j:twitch4j:1.2.1'
+    implementation 'com.xenomachina:kotlin-argparser:2.0.7'
+}
