@@ -1,0 +1,23 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.4.32'
+}
+
+group 'com.xenon.twitchutilities'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+}
+
+compileKotlin {
+    kotlinOptions.useIR = true
+    kotlinOptions.javaParameters = true
+    kotlinOptions.jvmTarget = JavaVersion.VERSION_1_8
+
+    kotlinOptions.freeCompilerArgs += ["-Xallow-result-return-type",
+                                       "-Xopt-in=kotlin.contracts.ExperimentalContracts"]
+}
