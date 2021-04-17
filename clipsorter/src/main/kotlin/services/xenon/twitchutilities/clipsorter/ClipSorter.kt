@@ -1,5 +1,8 @@
 package services.xenon.twitchutilities.clipsorter
 
+import com.github.philippheuer.credentialmanager.domain.OAuth2Credential
+import com.github.twitch4j.TwitchClient
+import com.github.twitch4j.TwitchClientBuilder
 import com.google.gson.GsonBuilder
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
@@ -7,13 +10,21 @@ import services.xenon.twitchutilities.clipsorter.data.ClipMeta
 import java.io.File
 import java.nio.file.Files
 import java.text.SimpleDateFormat
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.system.measureTimeMillis
 
 fun main(args: Array<String>) = mainBody {
+
     ArgParser(args).parseInto(::ClipSorterArgs).let { sorterArgs ->
         val gson = GsonBuilder()
             .setPrettyPrinting()
             .create()
+        val credential = OAuth2Credential("twitch", sorterArgs.authToken)
+        val twitchClient = TwitchClientBuilder.builder()
+            .withEnableChat(true)
+            .withChatAccount(credential)
+            .build()
+            ?: throw RuntimeException("The twitch api client was not instantiated correctly. Maybe check your oAuthToken?")
 
         val folder = sorterArgs.clipsFolder
         if (!folder.exists())
@@ -27,15 +38,6 @@ fun main(args: Array<String>) = mainBody {
             sortedFolder.mkdir()
         }
 
-        val gameMap = mapOf( // TODO: Replace with Twitch API?
-            491487 to "Dead by Daylight",
-            27471 to "Minecraft"
-        )
-
-        val folderMap = gameMap.mapValues {
-            File(sortedFolder, it.value)
-        }
-
         val format = SimpleDateFormat("MM-dd-YYYY")
 
         println("Mapping clip meta...")
@@ -45,12 +47,13 @@ fun main(args: Array<String>) = mainBody {
 
         println("Starting to sort ${mapped.size} clip${if (mapped.size == 1) "" else "s"}")
         println("===============================")
+
         val duration = measureTimeMillis {
             mapped.parallelStream()
                 .forEach { meta ->
-                    val gameFolder = folderMap[meta.gameId]
-                    if (gameFolder != null)
-                    {
+                    val gameFolder = File(sortedFolder, fetchName(491487, twitchClient, credential))
+
+                    if (gameFolder != null) {
                         if (!gameFolder.exists())
                         {
                             gameFolder.mkdir()
@@ -88,12 +91,46 @@ fun main(args: Array<String>) = mainBody {
     }
 }
 
+/**
+ * Fetches a game name from the game id.
+ *
+ * @param id the specified game ID
+ * @return The game name.
+ */
+fun fetchName(id: Int, client: TwitchClient, credential: OAuth2Credential) : String
+{
+    val resultList = client.helix.getGames(credential.accessToken, listOf(id.toString()), null).execute()
+    val gameName = AtomicReference<String>()
+
+    resultList.games.stream()
+        .findFirst()
+        .ifPresent { gameName.set(it.name) }
+
+    return gameName.get().toString()
+}
+
 class ClipSorterArgs(parser: ArgParser)
 {
+
+    val authToken by parser.storing(
+        "--authToken",
+        help = "Twitch OAuth Token"
+    )
 
     val clipsFolder by parser.storing(
         "--clipsFolder",
         help = "The target folder of the downloaded clips"
-    ) { File(this) }
-    val sortedFolder by parser.storing("--sortedFolder", help = "The target folder for the sorted clips") { File(this) }
+    )
+    {
+        File(this)
+    }
+
+    val sortedFolder by parser.storing(
+        "--sortedFolder",
+        help = "The target folder for the sorted clips"
+    )
+    {
+        File(this)
+    }
+
 }
