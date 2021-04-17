@@ -51,7 +51,7 @@ fun main(args: Array<String>) = mainBody {
         val duration = measureTimeMillis {
             mapped.parallelStream()
                 .forEach { meta ->
-                    val gameFolder = File(sortedFolder, fetchName(491487, twitchClient, credential))
+                    val gameFolder = File(sortedFolder, fetchName(meta.gameId, twitchClient, credential))
 
                     if (gameFolder != null) {
                         if (!gameFolder.exists())
