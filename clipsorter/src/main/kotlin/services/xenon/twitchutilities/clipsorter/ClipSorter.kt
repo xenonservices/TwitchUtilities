@@ -16,8 +16,13 @@ fun main(args: Array<String>) = mainBody {
             .setPrettyPrinting()
             .create()
 
-        val folder = File("V:\\Rec\\Twitch Clips\\Test\\Clips")
-        val sortedFolder = File("V:\\Rec\\Twitch Clips\\Test\\Sorted")
+        val folder = sorterArgs.clipsFolder
+        if (!folder.exists())
+        {
+            throw RuntimeException("The specified clips folder (${folder.path}) doesn't exist.")
+        }
+
+        val sortedFolder = sorterArgs.sortedFolder
         if (!sortedFolder.exists())
         {
             sortedFolder.mkdir()
@@ -54,7 +59,8 @@ fun main(args: Array<String>) = mainBody {
                     }
 
                     val dateFolder = File(gameFolder, format.format(meta.createdAt))
-                    if(!dateFolder.exists()) {
+                    if (!dateFolder.exists())
+                    {
                         dateFolder.mkdir()
                     }
 
@@ -75,4 +81,9 @@ fun main(args: Array<String>) = mainBody {
 class ClipSorterArgs(parser: ArgParser)
 {
 
+    val clipsFolder by parser.storing(
+        "--clipsFolder",
+        help = "The target folder of the downloaded clips"
+    ) { File(this) }
+    val sortedFolder by parser.storing("--sortedFolder", help = "The target folder for the sorted clips") { File(this) }
 }
