@@ -7,11 +7,10 @@ import services.xenon.twitchutilities.clipsorter.data.ClipMeta
 import java.io.File
 import java.nio.file.Files
 import java.text.SimpleDateFormat
+import kotlin.system.measureTimeMillis
 
 fun main(args: Array<String>) = mainBody {
     ArgParser(args).parseInto(::ClipSorterArgs).let { sorterArgs ->
-        println("Hello from Twitch ClipSorter :)")
-
         val gson = GsonBuilder()
             .setPrettyPrinting()
             .create()
@@ -39,42 +38,53 @@ fun main(args: Array<String>) = mainBody {
 
         val format = SimpleDateFormat("MM-dd-YYYY")
 
-        folder.listFiles()
+        println("Mapping clip meta...")
+        val mapped = folder.listFiles()
             .filter { it.name.endsWith(".meta") }
             .map { gson.fromJson(it.reader(), ClipMeta::class.java) }
-            .forEach { meta ->
-                val gameFolder = folderMap[meta.gameId]
-                if (gameFolder != null)
-                {
-                    if (!gameFolder.exists())
-                    {
-                        gameFolder.mkdir()
-                    }
 
-                    val originalClip = File(folder, "${meta.id}.mp4")
-                    if (!originalClip.exists())
+        println("Starting to sort ${mapped.size} clip${if (mapped.size == 1) "" else "s"}")
+        println("===============================")
+        val duration = measureTimeMillis {
+            mapped.parallelStream()
+                .forEach { meta ->
+                    val gameFolder = folderMap[meta.gameId]
+                    if (gameFolder != null)
                     {
-                        println("MP4 is missing for ${meta.id}")
-                        return@forEach
-                    }
+                        if (!gameFolder.exists())
+                        {
+                            gameFolder.mkdir()
+                        }
 
-                    val dateFolder = File(gameFolder, format.format(meta.createdAt))
-                    if (!dateFolder.exists())
-                    {
-                        dateFolder.mkdir()
-                    }
+                        val originalClip = File(folder, "${meta.id}.mp4")
+                        if (!originalClip.exists())
+                        {
+                            println("MP4 is missing for ${meta.id}")
+                            return@forEach
+                        }
 
-                    val targetClip = File(dateFolder, originalClip.name)
-                    if (targetClip.exists())
-                    {
-                        println("Clip ${meta.id} has already been sorted")
-                        return@forEach
-                    }
+                        val dateFolder = File(gameFolder, format.format(meta.createdAt))
+                        if (!dateFolder.exists())
+                        {
+                            dateFolder.mkdir()
+                        }
 
-                    Files.copy(originalClip.toPath(), targetClip.toPath())
-                    println("Clip ${meta.id} has now been sorted!")
+                        val targetClip = File(dateFolder, originalClip.name)
+                        if (targetClip.exists())
+                        {
+                            println("Clip ${meta.id} has already been sorted")
+                            return@forEach
+                        }
+
+                        Files.copy(originalClip.toPath(), targetClip.toPath())
+                        println("Clip ${meta.id} has now been sorted!")
+                    }
                 }
-            }
+        }
+
+        println("===============================")
+        println("Finished sorting the Twitch Clips!")
+        println("It took ${duration}ms to perform.")
     }
 }
 
