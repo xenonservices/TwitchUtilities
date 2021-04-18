@@ -3,6 +3,7 @@ package services.xenon.twitchutilities.counter
 import com.github.philippheuer.credentialmanager.domain.OAuth2Credential
 import com.github.twitch4j.TwitchClient
 import com.github.twitch4j.TwitchClientBuilder
+import com.github.twitch4j.pubsub.events.RewardRedeemedEvent
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
 
@@ -14,6 +15,12 @@ fun main(args: Array<String>) = mainBody {
             .withDefaultAuthToken(credential)
             .withEnablePubSub(true)
             .build()
+
+        client.pubSub.listenForChannelPointsRedemptionEvents(null, "83711921")
+
+        client.eventManager.onEvent(RewardRedeemedEvent::class.java) {
+            println("Redeem event: $it")
+        }
 
         println("Hello from Twitch Counter :)")
     }

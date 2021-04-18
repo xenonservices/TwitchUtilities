@@ -2,7 +2,6 @@ package services.xenon.twitchutilities.clipsorter
 
 import com.github.twitch4j.TwitchClient
 import com.github.twitch4j.TwitchClientBuilder
-import com.google.gson.GsonBuilder
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
 import services.xenon.twitchutilities.clipsorter.data.ClipMeta
@@ -18,10 +17,6 @@ fun main(args: Array<String>) = mainBody {
             .withClientSecret(sorterArgs.authToken)
             .withEnableHelix(true)
             .build()
-
-        val gson = GsonBuilder()
-            .setPrettyPrinting()
-            .create()
 
         val folder = sorterArgs.clipsFolder
         if (!folder.exists())
@@ -40,19 +35,10 @@ fun main(args: Array<String>) = mainBody {
         println("Mapping clip meta...")
         val mapped = folder.listFiles()
             .filter { it.name.endsWith(".meta") }
-            .map { gson.fromJson(it.reader(), ClipMeta::class.java) }
+            .map { GSON.fromJson(it.reader(), ClipMeta::class.java) }
 
-        val gameMap = mutableMapOf<Int, String>()
-        val ids = mapped.map { "${it.gameId}" }
-            .toSet()
-
-        client.helix.getGames(null, ids.toList(), null).execute()
-            .games.forEach { game ->
-                gameMap[game.id.toInt()] = game.name
-                println("Obtained ${game.id} -> ${game.name}")
-            }
-
-        val folderMap = gameMap.mapValues {
+        GameDictionary.fetchEntries(mapped.map { it.gameId }.toList(), client)
+        val folderMap = GameDictionary.getEntries().mapValues {
             File(sortedFolder, it.value)
         }
 
