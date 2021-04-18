@@ -1,5 +1,7 @@
 package services.xenon.twitchutilities.clipsorter
 
+import com.github.twitch4j.TwitchClient
+import com.github.twitch4j.TwitchClientBuilder
 import com.google.gson.GsonBuilder
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
@@ -11,6 +13,12 @@ import kotlin.system.measureTimeMillis
 
 fun main(args: Array<String>) = mainBody {
     ArgParser(args).parseInto(::ClipSorterArgs).let { sorterArgs ->
+        val client: TwitchClient = TwitchClientBuilder.builder()
+            .withClientId(sorterArgs.clientId)
+            .withClientSecret(sorterArgs.authToken)
+            .withEnableHelix(true)
+            .build()
+
         val gson = GsonBuilder()
             .setPrettyPrinting()
             .create()
@@ -27,21 +35,26 @@ fun main(args: Array<String>) = mainBody {
             sortedFolder.mkdir()
         }
 
-        val gameMap = mapOf( // TODO: Replace with Twitch API?
-            491487 to "Dead by Daylight",
-            27471 to "Minecraft"
-        )
-
-        val folderMap = gameMap.mapValues {
-            File(sortedFolder, it.value)
-        }
-
         val format = SimpleDateFormat("MM-dd-YYYY")
 
         println("Mapping clip meta...")
         val mapped = folder.listFiles()
             .filter { it.name.endsWith(".meta") }
             .map { gson.fromJson(it.reader(), ClipMeta::class.java) }
+
+        val gameMap = mutableMapOf<Int, String>()
+        val ids = mapped.map { "${it.gameId}" }
+            .toSet()
+
+        client.helix.getGames(null, ids.toList(), null).execute()
+            .games.forEach { game ->
+                gameMap[game.id.toInt()] = game.name
+                println("Obtained ${game.id} -> ${game.name}")
+            }
+
+        val folderMap = gameMap.mapValues {
+            File(sortedFolder, it.value)
+        }
 
         println("Starting to sort ${mapped.size} clip${if (mapped.size == 1) "" else "s"}")
         println("===============================")
@@ -96,4 +109,7 @@ class ClipSorterArgs(parser: ArgParser)
         help = "The target folder of the downloaded clips"
     ) { File(this) }
     val sortedFolder by parser.storing("--sortedFolder", help = "The target folder for the sorted clips") { File(this) }
+
+    val clientId by parser.storing("--clientId", help = "Twitch OAuth Client ID")
+    val authToken by parser.storing("--authToken", help = "Twitch OAuth Client Secret")
 }
